@@ -2112,7 +2112,6 @@ blk_qc_t submit_bio(struct bio *bio)
 				count);
 		}
 	}
-
 	return generic_make_request(bio);
 }
 EXPORT_SYMBOL(submit_bio);
