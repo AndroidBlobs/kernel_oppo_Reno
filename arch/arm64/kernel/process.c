@@ -62,6 +62,21 @@ unsigned long __stack_chk_guard __read_mostly;
 EXPORT_SYMBOL(__stack_chk_guard);
 #endif
 
+#ifdef VENDOR_EDIT
+/* YiXue.Ge@PSW.BSP.Kernel.Drv, 2017/11/27, add for some fault device can not reboot early */
+#include <soc/qcom/scm.h>
+static void do_restart_early(enum reboot_mode reboot_mode, const char *cmd);
+void do_poweroff_early(void);
+
+
+/*
+ * Function pointers to optional machine specific functions
+ */
+void (*pm_power_off)(void) = do_poweroff_early;
+EXPORT_SYMBOL_GPL(pm_power_off);
+
+void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd) = do_restart_early;
+#else
 /*
  * Function pointers to optional machine specific functions
  */
@@ -69,6 +84,7 @@ void (*pm_power_off)(void);
 EXPORT_SYMBOL_GPL(pm_power_off);
 
 void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+#endif
 
 /*
  * This is our default idle handler.
@@ -127,6 +143,49 @@ void machine_halt(void)
 	smp_send_stop();
 	while (1);
 }
+
+#ifdef VENDOR_EDIT
+/* YiXue.Ge@PSW.BSP.Kernel.Drv, 2017/11/27, add for some fault device can not reboot early */
+
+/*maybe system crashed at early boot time .at that time maybe pm_power_off and 
+  *arm_pm_restart are not defined
+  */
+#define PS_HOLD_ADDR 0x10ac000 //sdm660.dts
+#define SCM_IO_DEASSERT_PS_HOLD		2 //msm-poweroff.c
+
+static void pull_down_pshold(void)
+{
+	struct scm_desc desc = {
+		.args[0] = 0,
+		.arginfo = SCM_ARGS(1),
+	};
+	void __iomem *msm_ps_hold = ioremap(PS_HOLD_ADDR , 4);;
+
+	printk("user do_msm_restart_early to reboot\n");
+	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DEASSERT_PS_HOLD) > 0)
+	{
+		/* This call will be available on ARMv8 only */
+		scm_call2_atomic(SCM_SIP_FNID(SCM_SVC_PWR,
+				 SCM_IO_DEASSERT_PS_HOLD), &desc);
+
+	}
+	/* Fall-through to the direct write in case the scm_call "returns" */
+	if(msm_ps_hold)
+		__raw_writel(0, msm_ps_hold);
+
+	mdelay(10000);
+
+}
+static void do_restart_early(enum reboot_mode reboot_mode, const char *cmd)
+{
+	pull_down_pshold();
+}
+
+void do_poweroff_early(void)
+{
+	pull_down_pshold();
+}
+#endif
 
 /*
  * Power-off simply requires that the secondary CPUs stop performing any
@@ -235,6 +294,13 @@ static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 	set_fs(fs);
 }
 
+#ifdef VENDOR_EDIT //yixue.ge@bsp.drv add for dump cpu contex for minidump
+#ifdef CONFIG_QCOM_MINIDUMP
+extern void dumpcpuregs(struct pt_regs *pt_regs);
+#else
+void dumpcpuregs(struct pt_regs *pt_regs){}
+#endif
+#endif
 void __show_regs(struct pt_regs *regs)
 {
 	int i, top_reg;
@@ -250,6 +316,9 @@ void __show_regs(struct pt_regs *regs)
 		top_reg = 29;
 	}
 
+#ifdef VENDOR_EDIT //yixue.ge@bsp.drv add for dump cpu contex for minidump
+	dumpcpuregs(regs);
+#endif
 	show_regs_print_info(KERN_DEFAULT);
 	print_symbol("PC is at %s\n", instruction_pointer(regs));
 	print_symbol("LR is at %s\n", lr);
@@ -488,3 +557,45 @@ unsigned long arch_randomize_brk(struct mm_struct *mm)
 	else
 		return randomize_page(mm->brk, 0x40000000);
 }
+
+#if defined(VENDOR_EDIT) && defined(CONFIG_ELSA_STUB)
+//zhoumingjun@Swdp.shanghai, 2017/04/19, add process_event_notifier support
+static BLOCKING_NOTIFIER_HEAD(process_event_notifier);
+
+int process_event_register_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&process_event_notifier, nb);
+}
+EXPORT_SYMBOL(process_event_register_notifier);
+
+int process_event_unregister_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&process_event_notifier, nb);
+}
+EXPORT_SYMBOL(process_event_unregister_notifier);
+
+int process_event_notifier_call_chain(unsigned long action, struct process_event_data *pe_data)
+{
+	return blocking_notifier_call_chain(&process_event_notifier, action, pe_data);
+}
+
+//zhoumingjun@Swdp.shanghai, 2017/07/06, add process_event_notifier_atomic support
+static ATOMIC_NOTIFIER_HEAD(process_event_notifier_atomic);
+
+int process_event_register_notifier_atomic(struct notifier_block *nb)
+{
+	return atomic_notifier_chain_register(&process_event_notifier_atomic, nb);
+}
+EXPORT_SYMBOL(process_event_register_notifier_atomic);
+
+int process_event_unregister_notifier_atomic(struct notifier_block *nb)
+{
+	return atomic_notifier_chain_unregister(&process_event_notifier_atomic, nb);
+}
+EXPORT_SYMBOL(process_event_unregister_notifier_atomic);
+
+int process_event_notifier_call_chain_atomic(unsigned long action, struct process_event_data *pe_data)
+{
+	return atomic_notifier_call_chain(&process_event_notifier_atomic, action, pe_data);
+}
+#endif

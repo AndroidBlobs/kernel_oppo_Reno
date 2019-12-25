@@ -267,6 +267,15 @@ static arch_spinlock_t die_lock = __ARCH_SPIN_LOCK_UNLOCKED;
 static int die_owner = -1;
 static unsigned int die_nest_count;
 
+#ifdef VENDOR_EDIT //yixue.ge@bsp.drv add for dump cpu contex for minidump
+#ifdef CONFIG_QCOM_MINIDUMP
+int oops_count(void)
+{
+	return die_nest_count;
+}
+EXPORT_SYMBOL(oops_count);
+#endif /*CONFIG_QCOM_COMMON_LOG*/
+#endif /*VENDOR_EDIT*/
 static unsigned long oops_begin(void)
 {
 	int cpu;
@@ -799,15 +808,47 @@ const char *esr_get_class_string(u32 esr)
  */
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 {
+#ifdef VENDOR_EDIT
+/*Yixue.Ge@bsp.drv 20180118 after this  21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit
+ *El0 call bad_mode will make sys oops.such as el0_fiq_invalid el0_error_invalid el0_fiq_invalid_compat
+ *el0_error_invalid_compat .these four user exception will make system creash. but before 
+ *21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit.system just kill user process instead of oops
+ */
+	siginfo_t info;
+	void __user *pc = (void __user *)instruction_pointer(regs);
+#endif
 	console_verbose();
 
 	pr_crit("Bad mode in %s handler detected on CPU%d, code 0x%08x -- %s\n",
 		handler[reason], smp_processor_id(), esr,
 		esr_get_class_string(esr));
 
+#ifdef VENDOR_EDIT
+/*Yixue.Ge@bsp.drv 20180118 after this	21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit
+*El0 call bad_mode will make sys oops.such as el0_fiq_invalid el0_error_invalid el0_fiq_invalid_compat
+*el0_error_invalid_compat .these four user exception will make system creash. but before 
+*21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit.system just kill user process instead of oops
+*/
+	__show_regs(regs);
+
+	info.si_signo = SIGILL;
+	info.si_errno = 0;
+	info.si_code  = ILL_ILLOPC;
+	info.si_addr  = pc;
+#endif
+
+#ifdef VENDOR_EDIT
+/*Yixue.Ge@bsp.drv 20180118 after this	21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit
+ *El0 call bad_mode will make sys oops.such as el0_fiq_invalid el0_error_invalid el0_fiq_invalid_compat
+ *el0_error_invalid_compat .these four user exception will make system creash. but before 
+ *21ffe52cc23f29b9fddb2bb063340d1cda9cc57e commit.system just kill user process instead of oops
+ */
+	arm64_notify_die("Oops - bad mode", regs, &info, 0);
+#else
 	die("Oops - bad mode", regs, 0);
 	local_irq_disable();
 	panic("bad mode");
+#endif
 }
 
 /*
