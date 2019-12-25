@@ -32,6 +32,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include <soc/oppo/oppo_project.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
