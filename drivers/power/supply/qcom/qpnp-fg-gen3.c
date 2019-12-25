@@ -5597,9 +5597,20 @@ static void fg_cleanup(struct fg_chip *chip)
 		if (fg_irqs[i].irq)
 			devm_free_irq(chip->dev, fg_irqs[i].irq, chip);
 	}
-
+	#ifndef VENDOR_EDIT
+	//Fei.Mo@PSW.BSP.sensors, 2018/10/22, Moditfy for avoid null pointer
 	alarm_try_to_cancel(&chip->esr_filter_alarm);
 	debugfs_remove_recursive(chip->dfs_root);
+	#else
+	if (!IS_ERR_OR_NULL(chip->esr_filter_alarm.timer.function))
+		alarm_try_to_cancel(&chip->esr_filter_alarm);
+
+	if (!IS_ERR_OR_NULL(chip->nb.notifier_call))
+		power_supply_unreg_notifier(&chip->nb);
+
+	if (!IS_ERR_OR_NULL(chip->dfs_root))
+		debugfs_remove_recursive(chip->dfs_root);
+	#endif
 	if (chip->awake_votable)
 		destroy_votable(chip->awake_votable);
 
