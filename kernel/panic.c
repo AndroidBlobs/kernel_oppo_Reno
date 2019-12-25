@@ -65,6 +65,20 @@ void __weak panic_smp_self_stop(void)
 		cpu_relax();
 }
 
+#ifdef VENDOR_EDIT //yixue.ge@bsp.drv add for dump cpu contex for minidump
+#ifdef CONFIG_QCOM_MINIDUMP
+static int in_panic = 0;
+int panic_count(void)
+{
+	return in_panic;
+}
+EXPORT_SYMBOL(panic_count);
+extern void dumpcpuregs(struct pt_regs *pt_regs);
+#else
+void dumpcpuregs(struct pt_regs *pt_regs){}
+#endif /*CONFIG_QCOM_COMMON_LOG*/
+#endif /*VENDOR_EDIT*/
+
 /*
  * Stop ourselves in NMI context if another CPU has already panicked. Arch code
  * may override this to prepare for crash dumping, e.g. save regs info.
@@ -122,6 +136,7 @@ void nmi_panic(struct pt_regs *regs, const char *msg)
 }
 EXPORT_SYMBOL(nmi_panic);
 
+
 /**
  *	panic - halt the system
  *	@fmt: The text string to print
@@ -138,6 +153,15 @@ void panic(const char *fmt, ...)
 	int state = 0;
 	int old_cpu, this_cpu;
 	bool _crash_kexec_post_notifiers = crash_kexec_post_notifiers;
+
+#ifdef VENDOR_EDIT //yixue.ge@bsp.drv add for dump cpu contex for minidump
+#ifdef CONFIG_QCOM_MINIDUMP
+	in_panic++;
+	dumpcpuregs(NULL);
+
+#endif /*CONFIG_QCOM_COMMON_LOG*/
+#endif /*VENDOR_EDIT*/
+
 
 	trace_kernel_panic(0);
 
@@ -552,12 +576,22 @@ void __warn(const char *file, int line, void *caller, unsigned taint,
 	}
 
 	print_modules();
-
+#ifndef VENDOR_EDIT
+/* Fuchun.Liao@BSP.CHG.Basic 2019/03/09 modify for debug info */
 	if (regs)
 		show_regs(regs);
 	else
 		dump_stack();
-
+#else
+	if (regs) {
+		pr_warn("__warn ready to show_regs\n");
+		show_regs(regs);
+	} else {
+		pr_warn("__warn ready to dump_stack\n");
+		dump_stack();
+	}
+	pr_warn("__warn ready to oops_end\n");
+#endif /* VENDOR_EDIT */
 	print_oops_end_marker();
 
 	/* Just a warning, don't kill lockdep. */
