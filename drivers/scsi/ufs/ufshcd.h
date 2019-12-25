@@ -807,7 +807,10 @@ struct ufs_hba {
 	void *priv;
 	unsigned int irq;
 	bool is_irq_enabled;
-
+#ifdef VENDOR_EDIT
+//yh@PSW.BSP.Storage.UFS, 2019-03-09, Add for merge CR:2337239 patch
+	u32 dev_ref_clk_gating_wait;
+#endif
 	u32 dev_ref_clk_freq;
 
 	/* Interrupt aggregation support is broken */

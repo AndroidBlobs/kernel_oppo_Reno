@@ -1308,11 +1308,16 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		/*
 		 * If we are here to disable this clock it might be immediately
 		 * after entering into hibern8 in which case we need to make
-		 * sure that device ref_clk is active at least 1us after the
-		 * hibern8 enter.
+		 * sure that device ref_clk is active for a given time after the
+		 * hibern8 enter for pre UFS3.0 devices
 		 */
 		if (!enable)
+#ifndef VENDOR_EDIT
+//yh@PSW.BSP.Storage.UFS, 2019-03-09, Add for merge CR:2337239 patch
 			udelay(1);
+#else
+			udelay(host->hba->dev_ref_clk_gating_wait);
+#endif
 
 		writel_relaxed(temp, host->dev_ref_clk_ctrl_mmio);
 
@@ -1321,11 +1326,22 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 
 		/*
 		 * If we call hibern8 exit after this, we need to make sure that
-		 * device ref_clk is stable for at least 1us before the hibern8
+		 * device ref_clk is stable for a given time before the hibern8
 		 * exit command.
 		 */
+#ifndef VENDOR_EDIT
+//yh@PSW.BSP.Storage.UFS, 2019-03-09, Add for merge CR:2379411 patch
 		if (enable)
 			udelay(1);
+#else
+		if (enable) {
+			if (host->hba->dev_info.quirks &
+			    UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE)
+				usleep_range(50, 60);
+			else
+				udelay(1);
+		}
+#endif
 
 		host->is_dev_ref_clk_enabled = enable;
 	}
@@ -2753,7 +2769,7 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 	 * the regulators.
 	 */
 	if (of_property_read_bool(np, "non-removable") &&
-	    !of_property_read_bool(np, "force-ufshc-probe") &&
+	    strlen(android_boot_dev) &&
 	    strcmp(android_boot_dev, dev_name(dev)))
 		return -ENODEV;
 

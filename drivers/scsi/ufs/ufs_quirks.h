@@ -138,6 +138,16 @@ struct ufs_card_fix {
  */
 #define UFS_DEVICE_QUIRK_HS_G1_TO_HS_G3_SWITCH (1 << 8)
 
+#ifdef VENDOR_EDIT
+//yh@PSW.BSP.Storage.UFS, 2019-03-09, Add for merge CR:2379411 patch
+/*
+ * Some UFS devices need more delay after device reference clk is turned on
+ * but before initiation of the state transition to STALL from a LS-MODE or
+ * from the HIBERN8 state. Enable this quirk to give UFS devices 50us delay
+ * instead of the default delay.
+ */
+#define UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE	(1 << 9)
+#endif
 
 struct ufs_hba;
 void ufs_advertise_fixup_device(struct ufs_hba *hba);

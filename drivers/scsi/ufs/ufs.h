@@ -505,7 +505,10 @@ struct ufs_dev_info {
 	u8	b_device_sub_class;
 	u16	w_manufacturer_id;
 	u8	i_product_name;
-
+#ifdef VENDOR_EDIT
+//yh@PSW.BSP.Storage.UFS, 2019-03-09, Add for merge CR:2337239 patch
+	u16	w_spec_version;
+#endif
 	/* query flags */
 	bool f_power_on_wp_en;
 
