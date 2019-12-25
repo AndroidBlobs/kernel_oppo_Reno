@@ -44,6 +44,49 @@
 
 #include "irq-gic-common.h"
 
+#ifdef VENDOR_EDIT
+//Yongyao.Song@PSW.NW.PWR.919039, 2017/01/20
+//add for modem wake up source
+#define WAKEUP_SOURCE_MODEM 					60	//qcom,glink-smem-native-xprt-modem
+#define WAKEUP_SOURCE_MODEM_IPA					119 //ipa
+#define WAKEUP_SOURCE_ADSP						61  //qcom,glink-smem-native-xprt-adsp
+#define WAKEUP_SOURCE_CDSP						62	//qcom,glink-smem-native-xprt-cdsp
+
+extern u64 wakeup_source_count_adsp ;
+ extern u64 wakeup_source_count_cdsp;
+extern u64 wakeup_source_count_modem;
+
+#define MODEM_WAKEUP_SRC_NUM 3
+#define MODEM_DIAG_WS_INDEX 0
+#define MODEM_IPA_WS_INDEX 1
+#define MODEM_QMI_WS_INDEX 2
+
+#define WAKEUP_SOURCE_INT_FIRST		1
+#define WAKEUP_SOURCE_INT_SECOND	2
+
+extern int modem_wakeup_src_count[MODEM_WAKEUP_SRC_NUM];
+extern char modem_wakeup_src_string[MODEM_WAKEUP_SRC_NUM][10]; 
+#endif /* VENDOR_EDIT */
+
+#ifdef VENDOR_EDIT
+//liuhd@PSW.CN.WiFi.Hardware.1202765,2017/12/10,add for the irq of wlan when system wakeuped by wlan
+#define WLAN_WAKEUP_IRQ_NUMBER	723
+
+#define WAKEUP_SOURCE_WIFI_1ST 123
+#define WAKEUP_SOURCE_WIFI_2ND 129
+#define WAKEUP_SOURCE_WIFI_3RD 131
+#define WAKEUP_SOURCE_WIFI_4TH 134
+extern u64 wakeup_source_count_wifi ;
+#endif /*VENDOR_EDIT*/
+
+#ifdef VENDOR_EDIT
+//Lei.Zhang@PSW.CN.WiFi.Hardware., 2019/03/02
+//Add irq of WiFi for SDM710
+static unsigned int wlan_sirq = 0;
+#define WLAN_DATA_IRQ_NAME   "WLAN_CE_2"
+#endif /*VENDOR_EDIT*/
+
+
 #define MAX_IRQ			1020U	/* Max number of SGI+PPI+SPI */
 #define SPI_START_IRQ		32	/* SPI start irq number */
 #define GICD_ICFGR_BITS		2	/* 2 bits per irq in GICD_ICFGR */
@@ -702,7 +745,6 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	u32 enabled;
 	u32 pending[32];
 	void __iomem *base = gic_data.dist_base;
-
 	if (!msm_show_resume_irq_mask)
 		return;
 
@@ -725,6 +767,64 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 			name = desc->action->name;
 
 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+
+                  #ifdef VENDOR_EDIT
+                  //Lei.Zhang@PSW.CN.WiFi.Hardware., 2019/03/02
+                  //Add irq of WiFi for SDM710
+                  if (wlan_sirq == 0 && (name != NULL) && strncmp(name, WLAN_DATA_IRQ_NAME, strlen(WLAN_DATA_IRQ_NAME)) == 0) {
+                      wlan_sirq = irq;
+                  }
+                  #endif //VENDOR_EDIT
+
+		#ifdef VENDOR_EDIT
+		//liuhd@PSW.CN.WiFi.Hardware.1202765,2017/12/10,add for the irq of wlan when system wakeuped by wlan
+		if((irq  >= WAKEUP_SOURCE_WIFI_1ST && irq  <= WAKEUP_SOURCE_WIFI_2ND) || 
+			(irq  >= WAKEUP_SOURCE_WIFI_3RD && irq  <= WAKEUP_SOURCE_WIFI_4TH)) {
+			wakeup_source_count_wifi++;
+		}
+		if (irq == WLAN_WAKEUP_IRQ_NUMBER)
+	    {
+		  // modem_wakeup_source = 0;
+		   //schedule_work(&wakeup_reason_work);
+		}
+		#endif //VENDOR_EDIT
+		
+		#ifdef VENDOR_EDIT
+		//Lei.Zhang@PSW.CN.WiFi.Hardware., 2019/03/02
+		//Add irq of WiFi for SDM710
+		if (irq == wlan_sirq) {
+			wakeup_source_count_wifi++;
+		}
+		#endif
+
+		
+		#ifdef VENDOR_EDIT
+		//Yongyao.Song@PSW.NW.PWR.919039, 2017/01/20,add for modem wake up source
+        if ((WAKEUP_SOURCE_MODEM == irq ) || (WAKEUP_SOURCE_MODEM_IPA == irq))
+		{
+			wakeup_source_count_modem++;
+			if(WAKEUP_SOURCE_MODEM == irq)
+			{
+				modem_wakeup_src_count[MODEM_QMI_WS_INDEX]++;
+			}else if (WAKEUP_SOURCE_MODEM_IPA == irq) {
+				modem_wakeup_src_count[MODEM_IPA_WS_INDEX]++;
+				//modem_wakeup_source = 1;
+				//schedule_work(&wakeup_reason_work);
+			}
+		}
+		//Yongyao.Song add end
+		#endif /*VENDOR_EDIT*/
+
+		#ifdef VENDOR_EDIT
+		//Nanwei.Deng@BSP.Power.Basic, 2018/04/28, add for analysis power coumption.
+        if(WAKEUP_SOURCE_ADSP == irq) {
+			wakeup_source_count_adsp++;
+		}
+        if(WAKEUP_SOURCE_CDSP == irq) {
+           wakeup_source_count_cdsp++;
+		}
+	    #endif
+	
 	}
 }
 

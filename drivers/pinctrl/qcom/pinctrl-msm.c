@@ -40,6 +40,11 @@
 #include "../pinconf.h"
 #include "pinctrl-msm.h"
 #include "../pinctrl-utils.h"
+#ifdef VENDOR_EDIT
+//Nanwei.Deng@BSP.Power.Basic 2018/06/14 add formodem irq, ,case03529649
+#include <linux/syscore_ops.h>
+static struct msm_pinctrl *msm_pinctrl_data;
+#endif
 
 #define MAX_NR_GPIO 300
 #define PS_HOLD_OFFSET 0x820
