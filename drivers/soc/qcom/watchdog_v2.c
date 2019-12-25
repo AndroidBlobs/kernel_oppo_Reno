@@ -386,18 +386,34 @@ static void keep_alive_response(void *info)
  * If this function does not return, it implies one of the
  * other cpu's is not responsive.
  */
+#ifdef VENDOR_EDIT
+/* Fuchun.Liao@BSP.CHG.Basic 2018/09/26 add for debug cpu hang */
+static int wdog_ping_cpu = 0;
+#endif /* VENDOR_EDIT */
 static void ping_other_cpus(struct msm_watchdog_data *wdog_dd)
 {
+#ifndef VENDOR_EDIT
+/* Fuchun.Liao@BSP.CHG.Basic 2018/09/26 add for debug cpu hang */
 	int cpu;
+#endif /* VENDOR_EDIT */
 
 	cpumask_clear(&wdog_dd->alive_mask);
 	/* Make sure alive mask is cleared and set in order */
 	smp_mb();
+#ifndef VENDOR_EDIT
+/* Fuchun.Liao@BSP.CHG.Basic 2018/09/26 add for debug cpu hang */
 	for_each_cpu(cpu, cpu_online_mask) {
 		if (!cpu_idle_pc_state[cpu] && !cpu_isolated(cpu))
 			smp_call_function_single(cpu, keep_alive_response,
 						 wdog_dd, 1);
 	}
+#else
+	for_each_cpu(wdog_ping_cpu, cpu_online_mask) {
+		if (!cpu_idle_pc_state[wdog_ping_cpu] && !cpu_isolated(wdog_ping_cpu))
+			smp_call_function_single(wdog_ping_cpu, keep_alive_response,
+						 wdog_dd, 1);
+	}
+#endif /* VENDOR_EDIT */
 }
 
 static void pet_task_wakeup(unsigned long data)
@@ -874,6 +890,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	cpumask_clear(&wdog_dd->alive_mask);
 	wdog_dd->watchdog_task = kthread_create(watchdog_kthread, wdog_dd,
 			"msm_watchdog");
+
 	if (IS_ERR(wdog_dd->watchdog_task)) {
 		ret = PTR_ERR(wdog_dd->watchdog_task);
 		goto err;
