@@ -148,6 +148,12 @@ enum zone_stat_item {
 	NUMA_OTHER,		/* allocation from other node */
 #endif
 	NR_FREE_CMA_PAGES,
+#ifdef VENDOR_EDIT
+/* Hucai.Zhou@PSW.BSP.Kernel.MM, 2018-3-15
+ * Account free pages for MIGRATE_OPPO
+ */
+	NR_FREE_OPPO2_PAGES,
+#endif /* VENDOR_EDIT */
 	NR_VM_ZONE_STAT_ITEMS };
 
 enum node_stat_item {

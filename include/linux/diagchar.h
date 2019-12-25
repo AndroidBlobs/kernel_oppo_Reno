@@ -66,6 +66,19 @@
 #define DIAG_IOCTL_REGISTER_CALLBACK	37
 #define DIAG_IOCTL_HDLC_TOGGLE	38
 #define DIAG_IOCTL_QUERY_PD_LOGGING	39
+//#ifdef VENDOR_EDIT
+//Wentian.Mai@PSW.NW.EM.1854629, 2019/02/22
+//add for fix diag_mdlog kill fail,case 03877835 ,cr 2326409
+#define DIAG_IOCTL_QUERY_CON_ALL	40
+#define DIAG_IOCTL_QUERY_MD_PID		41
+//#endif
+//#ifdef VENDOR_EDIT
+//Zhengpeng.Tan@PSW.NW.EM.923996, 2017/01/09
+//add for modem log postback
+//#ifdef FEATURE_MODEMLOG_POSTBACK
+#define DIAG_IOCTL_SET_CLEARMASK	42
+//#endif/*FEATURE_MODEMLOG_POSTBACK*/
+//#endif/*VENDOR_EDIT*/
 
 /* PC Tools IDs */
 #define APQ8060_TOOLS_ID	4062
