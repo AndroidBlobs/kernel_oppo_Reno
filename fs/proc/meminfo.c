@@ -154,6 +154,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    global_page_state(NR_FREE_CMA_PAGES));
 #endif
 
+#ifdef VENDOR_EDIT
+/* Huacai.Zhou@PSW.BSP.Kernel.MM, 2018-3-15 */
+	show_val_kb(m, "Oppo2Free:        ",global_page_state(NR_FREE_OPPO2_PAGES));
+#endif /* VENDOR_EDIT */
 	hugetlb_report_meminfo(m);
 
 	arch_report_meminfo(m);
