@@ -925,6 +925,7 @@ static void cmdq_finish_data(struct mmc_host *mmc, unsigned int tag)
 }
 
 irqreturn_t cmdq_irq(struct mmc_host *mmc, int err, bool is_cmd_err)
+
 {
 	u32 status;
 	unsigned long tag = 0, comp_status;
